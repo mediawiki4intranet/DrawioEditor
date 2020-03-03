@@ -1,7 +1,6 @@
-
 function DrawioEditor(id, filename, type, interactive, updateHeight, updateWidth, updateMaxWidth) {
     var that = this;
-    
+
     this.id = id;
     this.filename = filename;
     this.imgType = type;
@@ -31,10 +30,10 @@ function DrawioEditor(id, filename, type, interactive, updateHeight, updateWidth
     this.iframeBox = $("#drawio-iframe-box-" + id);
     this.iframeBox.resizable({
         "handles": "s",
-	"distance": 0,
-	start: function(event, ui) {
+        "distance": 0,
+        start: function(event, ui) {
             that.showOverlay();
-	},
+        },
         stop: function(event, ui) {
             $(this).css("width", '');
             that.hideOverlay();
@@ -44,14 +43,19 @@ function DrawioEditor(id, filename, type, interactive, updateHeight, updateWidth
 
     this.iframeOverlay = $("#drawio-iframe-overlay-" + id);
     this.iframeOverlay.hide();
- 
+
+    this.iframeOrigin = ''+mw.config.get('wgDrawioEditorServiceUrl');
+    this.iframeOrigin = /^(\/[^/].*|$)/.exec(this.iframeOrigin)
+        ? window.origin
+        : this.iframeOrigin.replace(/^(https?:\/\/[^/]+).*$/i, '$1');
+
     this.iframe = $('<iframe>', {
-        src: 'https://www.draw.io/?embed=1&proto=json&spin=1&analytics=0&db=0&gapi=0&od=0&picker=0',
-	id: 'drawio-iframe-' + id,
-	class: 'DrawioEditorIframe'
+        src: mw.config.get('wgDrawioEditorServiceUrl')+'/?embed=1&proto=json&spin=1&analytics=0&db=0&gapi=0&od=0&picker=0',
+        id: 'drawio-iframe-' + id,
+        class: 'DrawioEditorIframe'
     })
     this.iframe.appendTo(this.iframeBox);
-    
+
     this.iframeWindow = this.iframe.prop('contentWindow');
 
     this.show();
@@ -101,7 +105,7 @@ DrawioEditor.prototype.updateImage = function (imageinfo) {
 }
 
 DrawioEditor.prototype.sendMsgToIframe = function(data) {
-    this.iframeWindow.postMessage(JSON.stringify(data), 'https://www.draw.io');
+    this.iframeWindow.postMessage(JSON.stringify(data), this.iframeOrigin);
 }
 
 DrawioEditor.prototype.showDialog = function(title, message) {
@@ -120,7 +124,7 @@ DrawioEditor.prototype.showSpinner = function() {
     this.showOverlay();
     this.sendMsgToIframe({
         'action': 'spinner',
-	'show': true
+        'show': true
     });
 }
 
@@ -138,16 +142,16 @@ DrawioEditor.prototype.downloadFromWiki = function() {
     var xhr = new XMLHttpRequest();
     xhr.onreadystatechange = function() {
         if (this.readyState == 4) {
-	    if (this.status == 200) {
+            if (this.status == 200) {
                 var res = this.response;
                 var fr = new FileReader();
                 fr.onload = function(ev) { that.loadImageFromDataURL(res.type, ev.target.result); };
                 fr.readAsDataURL(res);
-	    } else {
-	        that.showDialog('Load failed',
-	            'HTTP request to fetch image failed: ' + this.status +
-		    '<br>Image: ' + that.imageURL);
-	    }
+            } else {
+                that.showDialog('Load failed',
+                    'HTTP request to fetch image failed: ' + this.status +
+                    '<br>Image: ' + that.imageURL);
+            }
         }
     }
     xhr.onload = function() {
@@ -160,11 +164,11 @@ DrawioEditor.prototype.downloadFromWiki = function() {
 
 DrawioEditor.prototype.loadImageFromDataURL = function(type, dataurl) {
         if (type != this.imgMimeType) {
-	    this.showDialog('Load failed',
-	        'Invalid mime type when loading image from wiki:' +
-		'<br>Actual: ' + type + ' / Expected: ' + this.imgMimeType +
-		'<br>Image: ' + this.imageURL);
-	    return;
+            this.showDialog('Load failed',
+                'Invalid mime type when loading image from wiki:' +
+                '<br>Actual: ' + type + ' / Expected: ' + this.imgMimeType +
+                '<br>Image: ' + this.imageURL);
+            return;
         }
         if (this.imgType == 'svg') {
             this.sendMsgToIframe({ action: 'load', xml: dataurl});
@@ -177,13 +181,13 @@ DrawioEditor.prototype.loadImage = function() {
     if (!this.imageURL.length) {
         // just load without data if there's no current image
         this.sendMsgToIframe({ action: 'load' });
-	return;
+        return;
     }
     // fetch image from wiki. it must contain both image data and
     // draw.io xml data. see DrawioEditor.saveCallback()
     this.downloadFromWiki();
 }
- 
+
 DrawioEditor.prototype.uploadToWiki = function(blob) {
     var that = this;
 
@@ -197,34 +201,34 @@ DrawioEditor.prototype.uploadToWiki = function(blob) {
 
     $.ajax({
         url: mw.util.wikiScript('api'),
-	// contentType and processData must be false when using FormData
+        // contentType and processData must be false when using FormData
         contentType: false,
         processData: false,
-	type: "POST",
-	data: formdata,
+        type: "POST",
+        data: formdata,
         success: function(data) {
-	    if (!data.upload) {
-	        if (data.error) {
+            if (!data.upload) {
+                if (data.error) {
                     that.showDialog('Save failed',
-		       'The wiki returned the follwing error when uploading:<br>' +
-		       data.error.info);
-		} else {
+                       'The wiki returned the follwing error when uploading:<br>' +
+                       data.error.info);
+                } else {
                     that.showDialog('Save failed',
-		       'The upload to the wiki failed.' +
-		       '<br>Check javascript console for details.');
-		}
-		console.log('upload to wiki failed');
-		console.log(data);
-	    } else {
-	        that.updateImage(data.upload.imageinfo);
-	        that.hideSpinner();
-	    }
+                       'The upload to the wiki failed.' +
+                       '<br>Check javascript console for details.');
+                }
+                console.log('upload to wiki failed');
+                console.log(data);
+            } else {
+                that.updateImage(data.upload.imageinfo);
+                that.hideSpinner();
+            }
         },
         error: function(xhr, status, error) {
-	    that.showDialog('Save failed', 
-	        'Upload to wiki failed!' +
-		'<br>Error: ' + error +
-		'<br>Check javascript console for details.');
+            that.showDialog('Save failed',
+                'Upload to wiki failed!' +
+                '<br>Error: ' + error +
+                '<br>Check javascript console for details.');
         },
     });
 }
@@ -234,15 +238,15 @@ DrawioEditor.prototype.save = function(datauri) {
     // this.saveCallback()
 
     parts = /^data:([^;,=]+\/[^;,=]+)?((?:;[^;,=]+=[^;,=]+)+)?(?:;(base64))?,(.+)$/.exec(datauri);
-    
+
     // currently this save/upload to wiki code assumes that drawio passes data
     // URIs with base64 encoded data. this is currently the case but may not be
     // true forever. the check below errors out if the URI data is not base64
     // encoded (and if the data URI is otherwise deemed invalid.
     if (!parts || parts[1] != this.imgMimeType || parts[3] != 'base64' ||
             typeof parts[4] !== 'string' || parts[4].length < 1) {
-	that.showDialog('Save failed', 'Got unexpected data from drawio export.');
-	return;
+        that.showDialog('Save failed', 'Got unexpected data from drawio export.');
+        return;
     }
 
     // convert base64 to uint8 array
@@ -251,7 +255,7 @@ DrawioEditor.prototype.save = function(datauri) {
     for (i = 0; i < datastr.length; i++) {
         data[i] = datastr.charCodeAt(i);
     }
-    
+
     this.uploadToWiki(new Blob([data], {type: this.imgMimeType}));
 }
 
@@ -303,13 +307,13 @@ window.editDrawio = function(id, filename, type, updateHeight, updateWidth, upda
 };
 
 function drawioHandleMessage(e) {
-    // we only act on event coming from draw.io iframes
-    if (e.origin != 'https://www.draw.io')
-        return;
-    
     if (!editor)
         return;
-       
+
+    // we only act on event coming from draw.io iframes
+    if (e.origin != editor.iframeOrigin)
+        return;
+
     evdata = JSON.parse(e.data);
 
     switch(evdata['event']) {
@@ -330,7 +334,7 @@ function drawioHandleMessage(e) {
 
         case 'exit':
             editor.exitCallback();
-	    // editor is null after this callback
+            // editor is null after this callback
             break;
 
         default:
@@ -339,4 +343,3 @@ function drawioHandleMessage(e) {
 };
 
 window.addEventListener('message', drawioHandleMessage);
-

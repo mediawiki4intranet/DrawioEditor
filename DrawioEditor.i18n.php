@@ -11,6 +11,3 @@ $magicWords['de'] = array(
     'drawio' => array( 0, 'drawio' ),
 );
 */
-
-
-?>

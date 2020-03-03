@@ -3,12 +3,17 @@
 This is a MediaWiki extension that integrates the draw.io flow chart editor and allows inline editing of charts.
 
 # Warnings
+
 **Please read these warnings carefully before use**:
-- The actual editor functionality is loaded from draw.io. This code only provides integration.
-- Be aware that draw.io is an online service and while this plugin integrates the editor using an iframe and communicates with it only locally in your browser (javascript postMessage), it cannot guarantee that the code loaded from draw.io will not upload any data to foreign servers. **This may be a privacy concern. Read the Privacy section for more information. When in doubt, don't use draw.io or this module. You have been warned!**
-- This plugin is quite new and probably still has bugs, so it may or may not work with your installation.
+- This extension requires a draw.io web service.
+- By default, https://www.draw.io is used, but you can self-host it and set your own URL in `$wgDrawioEditorServiceUrl`.
+  Be aware that https://www.draw.io is an online service and while this plugin integrates the editor using an iframe and
+  only communicates with it locally in your browser (javascript postMessage), it cannot guarantee that the code loaded
+  from draw.io will not upload any data to foreign servers. **Self-host draw.io in case if you're concerned about privacy.**
+- Mediawiki4Intranet includes a self-hosted draw.io.
 
 # Features
+
 - **draw.io chart creation and editing**.
 - **SVG** and PNG support. The file type can be configured globally and changed on a per-image basis.
 - **Inline Editing** and javascript uploads on save, you never leave or reload the wiki page.
@@ -19,43 +24,63 @@ This is a MediaWiki extension that integrates the draw.io flow chart editor and 
 - Supports relative and fixed chart dimensions.
 
 # Requirements
+
 - When you intend to use SVG which is recommended, you might want to install Extension:NativeSvgHandler too. Also you need a browser that supports SVG.
 - While displaying charts may work in older browsers, especially when using PNG (SVG is default and recommended), saving charts requires a fairly recent browser.
-- The drawings produced by the draw.io editor make use of the xhtml namespace in SVG files. This namespace is not allowed for file uploads in MediaWiki 1.26 and later. So if you want to use SVG with this extension, you need to use a MediaWiki that is older or you need to patch it (see Installation). Hopefully this requirement is only temporary. She this [issue](https://www.github.com/mgeb/mediawiki-drawio-editor/issues/1) and the [one on Wikimedia's phabricator](https://phabricator.wikimedia.org/T138783).
+- The drawings produced by the draw.io editor make use of the xhtml namespace in SVG files.
+  This namespace is not allowed for file uploads in MediaWiki 1.26 and later.
+  So if you want to use SVG with this extension, you need to use a MediaWiki that is older or you need to patch it (see Installation).
+  Hopefully this requirement is only temporary. She this [issue](https://www.github.com/mgeb/mediawiki-drawio-editor/issues/1) and the [one on Wikimedia's phabricator](https://phabricator.wikimedia.org/T138783).
 
 # Installation
+
 1. Clone this plugin into a folder named DrawioEditor within your wiki's extensions folder:
+
    ```shell
    cd /where/your/wiki/is/extensions
    git clone https://github.com/mgeb/mediawiki-drawio-editor DrawioEditor
    ```
 
-2. Activate the plugin in LocalSettings.php:
+3. Activate the plugin in LocalSettings.php and set configuration:
 
-  ```
-  require_once "$IP/extensions/DrawioEditor/DrawioEditor.php";
-  ```
-3. If you want so use SVG (recommended) and the version of your MediaWiki is 1.26 or newer, you need to add the namespace ```http://www.w3.org/1999/xhtml``` to ```$validNamespaces```in  ```includes/upload/UploadBase.php```. See Requirements for more information on why this is currently needed.
+   ```
+   require_once "$IP/extensions/DrawioEditor/DrawioEditor.php";
+   $wgDrawioEditorServiceUrl = 'https://www.draw.io';
+   ```
+
+3. If you want so use SVG (recommended) and the version of your MediaWiki is 1.26 or newer,
+   you need to add the namespace ```http://www.w3.org/1999/xhtml``` to ```$validNamespaces``` in ```includes/upload/UploadBase.php```.
+   See Requirements for more information on why this is currently needed.
 
 # Usage
-## Add a chart
-1. Add the following tag to any wiki page to insert a draw.io chart:
+
+## Add or upload a chart
+
+DrawioEditor handles charts saved as file uploads with names like `File:<ChartName>.drawio.svg`.
+To edit charts they are required to include a copy of the diagram source
+(Export -> SVG -> "Include a copy of my diagram" in draw.io).
+
+1. If you want to upload an existing chart, export it as SVG with "a copy of the diagram"
+   and upload in into MediaWiki with a name ending in `.drawio.svg`.
+2. Add the following tag to any wiki page to insert a draw.io chart:
    ```wiki
    {{#drawio:ChartName}}
    ```
-  
-   `ChartName` must be unique and will be used as the basename for the backing file.
-2. Save the wiki page.
-2. Since no chart exists at this point, a placeholder will be shown where you've put the drawio tag. Click on the Edit link at the top right of it.
-3. Draw your chart, click Save to save and Exit to leave Edit mode.
+   `ChartName` is the part of the file name before `.drawio.svg`.
+3. Save the wiki page.
+4. Click [Edit] at the top right of the page.
+5. Draw your chart, click Save to save and Exit to leave Edit mode.
 
 ## Edit a chart
-Each chart will have an Edit lilnk at it's top right. Click it to get back into the editor. Click Save to save and Exit to get out of the editor. If a wiki page has multiple charts, only one can be edited at the same time.
+
+Each chart will have an Edit link at it's top right. Click it to get back into the editor. Click Save to save and Exit to get out of the editor. If a wiki page has multiple charts, only one can be edited at the same time.
 
 ## View or revert to old versions
+
 On each save, a new version of the backing file will be added to the wiki file store. You can get there by clicking the chart while you're not editing. There you can look at and revert to old versions like with any file uploaded to the wiki.
 
 ## Options ##
+
 Options are appended to the tag separated by `|`. For example:
 
 ```wiki
@@ -63,13 +88,15 @@ Options are appended to the tag separated by `|`. For example:
 ```
 
 ### Chart dimensions
+
 While the defaults are good under most circumstances, it may be necessary to control how your chart is displayed. The following options can be used for that:
-  
+
 * _width_: Sets the chart width. Defaults to `100%`.
 * _max-width_: Set the maximum chart width if _width_ is relative. Defaults to `chart`.
 * _height_: Sets the chart height. Defaults to `auto`. Usually not used.
 
 These option take any absolute CSS length value as argument, for example:
+
 * `400px`
 * `80%`
 * `auto`
@@ -83,6 +110,7 @@ If you want it to scale further or less, you can adjust _max_width_ manually. Us
 If you just want a fixed width, set _width_ to `chart` or some fixed CSS value and leave _height_ on `auto`. Unless you need a fixed sized image area before the image is actually loaded or really need to scale based on height, there is usually no point in setting _height_. If you set it you probably should set _width_ to `auto`, or when setting both use `chart` so you don't need to update the values manually every time your image changes.
 
 #### Examples
+
 * Let the chart scale until it reaches its actual width (default):
   
   ```wiki
